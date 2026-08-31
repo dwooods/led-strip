@@ -1,0 +1,932 @@
+<title>LED Strip Bench</title>
+<style>
+  :root {
+    --bg-void: #0a0d0e;
+    --panel: #12171a;
+    --panel-raised: #171d20;
+    --border: #262f33;
+    --border-soft: #1c2427;
+    --text: #e6ece9;
+    --text-muted: #7f9089;
+    --text-faint: #4d5a56;
+    --copper: #d98b4a;
+    --copper-dim: #8a5c34;
+    --signal: #49d9bd;
+    --signal-dim: #2a5f54;
+    --off-lens: #171b1d;
+    --font-display: 'Rajdhani', 'Segoe UI', sans-serif;
+    --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg-void);
+    color: var(--text);
+    font-family: var(--font-body);
+    margin: 0;
+    padding: 32px 20px 48px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 880px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* faint breadboard-hole texture behind everything, grounds the "bench" idea */
+  .page::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(var(--border-soft) 1px, transparent 1px);
+    background-size: 22px 22px;
+    opacity: 0.35;
+    z-index: 0;
+  }
+
+  header, .panel, footer { position: relative; z-index: 1; }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border-soft);
+    padding-bottom: 18px;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 2.1rem;
+    letter-spacing: 0.02em;
+    margin: 0;
+    text-wrap: balance;
+    color: var(--text);
+  }
+
+  h1 span { color: var(--copper); }
+
+  .subtitle {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    margin: 6px 0 0;
+    max-width: 46ch;
+  }
+
+  .repo-link {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--signal);
+    text-decoration: none;
+    border: 1px solid var(--signal-dim);
+    padding: 5px 10px;
+    border-radius: 3px;
+    white-space: nowrap;
+    transition: background 0.15s ease;
+  }
+  .repo-link:hover { background: rgba(73, 217, 189, 0.08); }
+  .repo-link:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .controls {
+    padding: 18px 20px;
+    display: flex;
+    align-items: end;
+    gap: 22px;
+    flex-wrap: wrap;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .field label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  select, input[type="number"] {
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.92rem;
+    padding: 8px 10px;
+    border-radius: 4px;
+  }
+  select { min-width: 190px; }
+  input[type="number"] {
+    width: 84px;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  select:focus-visible, input:focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 1px;
+  }
+
+  .transport { display: flex; gap: 10px; margin-left: auto; }
+
+  button.switch {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    font-size: 0.85rem;
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  button.switch:hover { border-color: var(--copper-dim); }
+  button.switch:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+  button.switch.active { border-color: var(--signal); color: var(--signal); }
+
+  .power {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-faint);
+    padding-left: 14px;
+    border-left: 1px solid var(--border-soft);
+  }
+  .power-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--signal);
+    box-shadow: 0 0 6px 1px var(--signal);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  .power-dot.paused { background: var(--text-faint); box-shadow: none; animation: none; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  .viewport {
+    padding: 26px 22px 22px;
+  }
+
+  .viewport-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0 0 12px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .strip-rail {
+    background: var(--bg-void);
+    border: 1px solid var(--border-soft);
+    border-radius: 6px;
+    padding: 16px 14px;
+    overflow-x: auto;
+  }
+
+  .strip {
+    display: flex;
+    gap: 5px;
+    width: max-content;
+    min-width: 100%;
+    justify-content: space-between;
+  }
+
+  .bulb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--off-lens);
+    transition: background 0.05s linear, box-shadow 0.05s linear;
+  }
+
+  .legend {
+    padding: 16px 20px 18px;
+  }
+  .legend-title {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0 0 12px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  th { text-align: left; font-weight: 500; color: var(--text-faint); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; padding-bottom: 8px; }
+  td { padding: 6px 10px 6px 0; border-top: 1px solid var(--border-soft); vertical-align: top; }
+  td.key { font-family: var(--font-mono); color: var(--copper); width: 28px; }
+  td.name { white-space: nowrap; color: var(--text); }
+  td.hint { color: var(--text-muted); }
+  tr.current td { color: var(--signal); }
+  tr.current td.key { color: var(--signal); }
+
+  footer {
+    font-size: 0.8rem;
+    color: var(--text-faint);
+    text-align: center;
+    padding-top: 4px;
+  }
+  footer a { color: var(--text-muted); }
+
+  @media (max-width: 560px) {
+    .controls { flex-direction: column; align-items: stretch; }
+    .transport { margin-left: 0; }
+    select { min-width: 0; width: 100%; }
+  }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<div class="page">
+  <header>
+    <div>
+      <h1>LED Strip <span>Bench</span></h1>
+      <p class="subtitle">Every effect from your Pi 5 LED strip, running here on a virtual 60-pixel strip — so you can preview a pattern without SSHing in.</p>
+    </div>
+    <a class="repo-link" href="https://github.com/dwooods/led-strip" target="_blank" rel="noopener">github.com/dwooods/led-strip</a>
+  </header>
+
+  <div class="panel controls">
+    <div class="field">
+      <label for="effect">Effect</label>
+      <select id="effect"></select>
+    </div>
+    <div class="field" id="paramField">
+      <label for="param" id="paramLabel">Speed</label>
+      <input type="number" id="param" step="0.1" min="0.1" value="1">
+    </div>
+    <div class="transport">
+      <button class="switch active" id="playPause" type="button">Pause</button>
+      <button class="switch" id="restart" type="button">Restart</button>
+    </div>
+    <div class="power">
+      <span class="power-dot" id="powerDot"></span>
+      <span id="powerLabel">Live</span>
+    </div>
+  </div>
+
+  <div class="panel viewport">
+    <p class="viewport-label"><span>Strip · 60 px</span><span id="effectReadout">Rainbow</span></p>
+    <div class="strip-rail">
+      <div class="strip" id="strip"></div>
+    </div>
+  </div>
+
+  <div class="panel legend">
+    <p class="legend-title">Menu reference (led.py)</p>
+    <table>
+      <thead><tr><th>Key</th><th>Effect</th><th>Notes</th></tr></thead>
+      <tbody id="legendBody"></tbody>
+    </table>
+  </div>
+
+  <footer>
+    Reimplemented in JS for preview only — the real strip runs at 50% brightness by default (<code>get_strip(brightness=0.5)</code>) and drives actual hardware over SPI, so colors here will read brighter than the physical strip.
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var LED_COUNT = 60;
+
+  // ---------- small utilities, mirroring Python's random/math calls ----------
+  function rand(a, b) { return Math.random() * (b - a) + a; }
+  function randInt(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+  function choice(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+  function sample(arr, n) {
+    var pool = arr.slice(), out = [];
+    for (var i = 0; i < n && pool.length; i++) {
+      var idx = Math.floor(Math.random() * pool.length);
+      out.push(pool[idx]);
+      pool.splice(idx, 1);
+    }
+    return out;
+  }
+  function scaled(color, intensity) {
+    intensity = clamp(intensity, 0, 1);
+    return [Math.round(color[0] * intensity), Math.round(color[1] * intensity), Math.round(color[2] * intensity)];
+  }
+  function heatColor(heat) {
+    heat = clamp(Math.round(heat), 0, 255);
+    var t192 = Math.round((heat / 255) * 191);
+    var heatramp = (t192 & 0x3F) << 2;
+    if (t192 & 0x80) return [255, 255, heatramp];
+    if (t192 & 0x40) return [255, heatramp, 0];
+    return [heatramp, 0, 0];
+  }
+  function hsvToRgb(h, s, v) {
+    h = ((h % 1) + 1) % 1;
+    var i = Math.floor(h * 6), f = h * 6 - i;
+    var p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s), r, g, b;
+    switch (i % 6) {
+      case 0: r = v; g = t; b = p; break;
+      case 1: r = q; g = v; b = p; break;
+      case 2: r = p; g = v; b = t; break;
+      case 3: r = p; g = q; b = v; break;
+      case 4: r = t; g = p; b = v; break;
+      default: r = v; g = p; b = q; break;
+    }
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+  }
+
+  var pixels = [];
+  for (var pi = 0; pi < LED_COUNT; pi++) pixels.push([0, 0, 0]);
+
+  // ---------- effect: rainbow ----------
+  var rainbow = {
+    name: "Rainbow", paramLabel: "Speed", defaultParam: 1,
+    init: function (s) { s.offset = 0; },
+    step: function (s, dt) {
+      s.offset += 0.25 * s.param * dt;
+      for (var i = 0; i < LED_COUNT; i++) {
+        pixels[i] = hsvToRgb(i / LED_COUNT + s.offset, 1, 1);
+      }
+    }
+  };
+
+  // ---------- effect: heartbeat ----------
+  var heartbeat = {
+    name: "Heartbeat", paramLabel: "BPM", defaultParam: 100,
+    init: function (s) {
+      s.center = (LED_COUNT - 1) / 2;
+      s.maxDistance = Math.max(s.center, LED_COUNT - 1 - s.center);
+      s.pulses = [];
+      s.nextLub = 0;
+    },
+    step: function (s, dt, now) {
+      var cycleLength = 60.0 / s.param;
+      var speed = (s.maxDistance + 4) / (cycleLength * 0.6);
+      var ringSigma = 1.5, decayRate = 3.0, baseGlow = 0.03;
+      if (now >= s.nextLub) {
+        s.pulses.push({ start: now, amp: 1.0 });
+        s.pulses.push({ start: now + cycleLength * 0.16, amp: 0.6 });
+        s.nextLub = now + cycleLength;
+      }
+      s.pulses = s.pulses.filter(function (p) { return (now - p.start) * speed < s.maxDistance + 6; });
+      for (var i = 0; i < LED_COUNT; i++) {
+        var d = Math.abs(i - s.center), intensity = baseGlow;
+        for (var j = 0; j < s.pulses.length; j++) {
+          var p = s.pulses[j], elapsed = now - p.start;
+          if (elapsed < 0) continue;
+          var wavefront = elapsed * speed;
+          var ring = Math.exp(-((d - wavefront) * (d - wavefront)) / (2 * ringSigma * ringSigma));
+          var fade = Math.exp(-elapsed * decayRate);
+          intensity += p.amp * ring * fade;
+        }
+        intensity = Math.min(intensity, 1);
+        pixels[i] = [Math.round(255 * intensity), 0, 0];
+      }
+    }
+  };
+
+  // ---------- effect: pac-man chase ----------
+  var PELLET_COLOR = [25, 25, 40], PACMAN_OPEN = [255, 255, 0], PACMAN_CLOSED = [90, 70, 0];
+  var CHERRY_COLOR = [220, 0, 60], FRIGHTENED_COLOR = [150, 0, 220], FLASH_COLOR = [255, 255, 255];
+  var GHOST_COLORS = [[255, 0, 0], [255, 105, 180], [0, 255, 255], [255, 140, 0]];
+  var pacman = {
+    name: "Pac-Man chase", paramLabel: null, defaultParam: null,
+    init: function (s) {
+      s.pellets = new Array(LED_COUNT).fill(true);
+      s.pacmanPos = 0;
+      s.ghosts = GHOST_COLORS.map(function (c, i) { return { pos: (6 + i * 6) % LED_COUNT, color: c }; });
+      s.flash = null; s.frame = 0; s.cherryPos = null; s.frightenedFrames = 0; s.acc = 0;
+    },
+    step: function (s, dt) {
+      s.acc += dt;
+      var FRAME_DT = 0.08;
+      while (s.acc >= FRAME_DT) {
+        s.acc -= FRAME_DT;
+        s.frame += 1;
+        s.pacmanPos = (s.pacmanPos + 1) % LED_COUNT;
+        s.pellets[s.pacmanPos] = false;
+        for (var g = 0; g < s.ghosts.length; g++) {
+          var ghost = s.ghosts[g];
+          if (Math.random() > 0.15) ghost.pos = (ghost.pos + 1) % LED_COUNT;
+          if (ghost.pos === s.pacmanPos) {
+            s.flash = [ghost.pos, 4];
+            ghost.pos = (s.pacmanPos + randInt(15, 25)) % LED_COUNT;
+          }
+        }
+        if (!s.pellets.some(Boolean)) { s.pellets = new Array(LED_COUNT).fill(true); s.pellets[s.pacmanPos] = false; }
+        if (s.cherryPos === null && s.frightenedFrames <= 0 && Math.random() < 0.006) {
+          var candidate = randInt(0, LED_COUNT - 1);
+          if (candidate !== s.pacmanPos) s.cherryPos = candidate;
+        }
+        if (s.cherryPos !== null && s.pacmanPos === s.cherryPos) { s.cherryPos = null; s.frightenedFrames = 65; }
+        for (var i = 0; i < LED_COUNT; i++) pixels[i] = s.pellets[i] ? PELLET_COLOR : [0, 0, 0];
+        if (s.cherryPos !== null) pixels[s.cherryPos] = CHERRY_COLOR;
+        for (var g2 = 0; g2 < s.ghosts.length; g2++) {
+          var gh = s.ghosts[g2];
+          pixels[gh.pos] = s.frightenedFrames > 0 ? FRIGHTENED_COLOR : gh.color;
+        }
+        if (s.flash && s.flash[1] > 0) { pixels[s.flash[0]] = FLASH_COLOR; s.flash = [s.flash[0], s.flash[1] - 1]; }
+        var chompOpen = (s.frame % 4) < 2;
+        pixels[s.pacmanPos] = chompOpen ? PACMAN_OPEN : PACMAN_CLOSED;
+        if (s.frightenedFrames > 0) s.frightenedFrames -= 1;
+      }
+    }
+  };
+
+  // ---------- effect: fire ----------
+  var fire = {
+    name: "Fire", paramLabel: "Intensity", defaultParam: 1,
+    init: function (s) {
+      s.heat = new Array(LED_COUNT).fill(0);
+      s.acc = 0;
+      s.sparking = clamp(Math.round(120 * s.param), 0, 255);
+      s.cooling = clamp(Math.round(55 / Math.max(s.param, 0.2)), 20, 100);
+    },
+    step: function (s, dt) {
+      s.acc += dt;
+      var FRAME_DT = 0.03;
+      while (s.acc >= FRAME_DT) {
+        s.acc -= FRAME_DT;
+        for (var i = 0; i < LED_COUNT; i++) {
+          var cooldown = randInt(0, Math.floor((s.cooling * 10) / LED_COUNT) + 2);
+          s.heat[i] = Math.max(0, s.heat[i] - cooldown);
+        }
+        for (var k = LED_COUNT - 1; k > 1; k--) {
+          s.heat[k] = Math.floor((s.heat[k - 1] + s.heat[k - 2] + s.heat[k - 2]) / 3);
+        }
+        if (randInt(0, 255) < s.sparking) {
+          var y = randInt(0, Math.min(6, LED_COUNT - 1));
+          s.heat[y] = Math.min(255, s.heat[y] + randInt(160, 255));
+        }
+      }
+      for (var j = 0; j < LED_COUNT; j++) pixels[j] = heatColor(s.heat[j]);
+    }
+  };
+
+  // ---------- effect: pong ----------
+  var pong = {
+    name: "Pong", paramLabel: "Speed", defaultParam: 1,
+    init: function (s) {
+      s.ballPos = LED_COUNT / 2;
+      s.direction = Math.random() < 0.5 ? -1 : 1;
+      s.baseSpeed = 12.0 * s.param;
+      s.speed = s.baseSpeed;
+      s.leftFlash = 0; s.rightFlash = 0; s.scoreFlash = null; s.trail = [];
+      s.paddle = 3;
+    },
+    step: function (s, dt) {
+      var LEFT = [0, 180, 255], RIGHT = [255, 120, 0], LEFT_F = [120, 220, 255], RIGHT_F = [255, 190, 120];
+      if (s.scoreFlash === null) {
+        s.ballPos += s.direction * s.speed * dt;
+        s.trail.push(s.ballPos);
+        if (s.trail.length > 4) s.trail.shift();
+        var leftEdge = s.paddle, rightEdge = LED_COUNT - 1 - s.paddle;
+        if (s.ballPos <= leftEdge && s.direction < 0) {
+          if (Math.random() < 0.08) { s.scoreFlash = { side: "right", frames: 20 }; }
+          else { s.direction = 1; s.speed += 1.5 * s.param; s.leftFlash = 4; s.ballPos = leftEdge; }
+        } else if (s.ballPos >= rightEdge && s.direction > 0) {
+          if (Math.random() < 0.08) { s.scoreFlash = { side: "left", frames: 20 }; }
+          else { s.direction = -1; s.speed += 1.5 * s.param; s.rightFlash = 4; s.ballPos = rightEdge; }
+        }
+      }
+      for (var i = 0; i < LED_COUNT; i++) pixels[i] = [0, 0, 0];
+      for (var p = 0; p < s.paddle; p++) pixels[p] = s.leftFlash > 0 ? LEFT_F : LEFT;
+      for (var p2 = LED_COUNT - s.paddle; p2 < LED_COUNT; p2++) pixels[p2] = s.rightFlash > 0 ? RIGHT_F : RIGHT;
+      if (s.scoreFlash === null) {
+        for (var t = 0; t < s.trail.length - 1; t++) {
+          var idx = Math.round(s.trail[t]);
+          if (idx >= 0 && idx < LED_COUNT) pixels[idx] = [60, 60, 60];
+        }
+        var bIdx = Math.round(s.ballPos);
+        if (bIdx >= 0 && bIdx < LED_COUNT) pixels[bIdx] = [255, 255, 255];
+      } else {
+        var flashColor = s.scoreFlash.side === "right" ? RIGHT_F : LEFT_F;
+        if (s.scoreFlash.frames % 2 === 0) for (var i2 = 0; i2 < LED_COUNT; i2++) pixels[i2] = flashColor;
+        s.scoreFlash.frames -= 1;
+        if (s.scoreFlash.frames <= 0) {
+          s.scoreFlash = null; s.ballPos = LED_COUNT / 2; s.direction = Math.random() < 0.5 ? -1 : 1;
+          s.speed = s.baseSpeed; s.trail = [];
+        }
+      }
+      if (s.leftFlash > 0) s.leftFlash -= 1;
+      if (s.rightFlash > 0) s.rightFlash -= 1;
+    }
+  };
+
+  // ---------- effect: fireworks ----------
+  var FW_PALETTES = [[255, 60, 30], [255, 200, 40], [60, 140, 255], [80, 255, 120], [200, 80, 255], [255, 255, 255]];
+  var fireworks = {
+    name: "Fireworks", paramLabel: "Launch rate", defaultParam: 1,
+    init: function (s) {
+      s.minInterval = 0.9 / s.param; s.maxInterval = 2.2 / s.param;
+      s.rockets = []; s.particles = []; s.nextLaunch = 0;
+    },
+    step: function (s, dt, now) {
+      if (now >= s.nextLaunch && s.rockets.length === 0) {
+        s.rockets.push({ pos: 0, target: rand(LED_COUNT * 0.35, LED_COUNT * 0.95), direction: 1, speed: rand(45, 65) });
+        s.nextLaunch = now + rand(s.minInterval, s.maxInterval);
+      }
+      for (var r = s.rockets.length - 1; r >= 0; r--) {
+        var rk = s.rockets[r];
+        rk.pos += rk.direction * rk.speed * dt;
+        var reached = (rk.direction > 0 && rk.pos >= rk.target) || (rk.direction < 0 && rk.pos <= rk.target);
+        if (reached) {
+          var color = choice(FW_PALETTES), count = randInt(10, 18);
+          for (var c = 0; c < count; c++) {
+            var vel = rand(-40, 40);
+            if (Math.abs(vel) < 6) vel = vel >= 0 ? 6 : -6;
+            s.particles.push({ pos: rk.pos, vel: vel, brightness: 1.0, color: color });
+          }
+          s.rockets.splice(r, 1);
+        }
+      }
+      for (var p = s.particles.length - 1; p >= 0; p--) {
+        var pt = s.particles[p];
+        pt.vel *= (1 - 1.5 * dt);
+        pt.pos += pt.vel * dt;
+        pt.brightness -= dt * rand(0.7, 1.1);
+        if (pt.brightness <= 0.02 || pt.pos < -2 || pt.pos > LED_COUNT + 1) s.particles.splice(p, 1);
+      }
+      for (var i = 0; i < LED_COUNT; i++) pixels[i] = [0, 0, 0];
+      for (var r2 = 0; r2 < s.rockets.length; r2++) {
+        var rk2 = s.rockets[r2], idx = Math.round(rk2.pos);
+        if (idx >= 0 && idx < LED_COUNT) pixels[idx] = [255, 220, 180];
+        var trailIdx = idx - rk2.direction;
+        if (trailIdx >= 0 && trailIdx < LED_COUNT) pixels[trailIdx] = [80, 60, 40];
+      }
+      for (var p2 = 0; p2 < s.particles.length; p2++) {
+        var ptc = s.particles[p2], pidx = Math.round(ptc.pos);
+        if (pidx >= 0 && pidx < LED_COUNT) pixels[pidx] = scaled(ptc.color, ptc.brightness);
+      }
+    }
+  };
+
+  // ---------- effect: explosions ----------
+  var explosions = {
+    name: "Explosions", paramLabel: "Rate", defaultParam: 1,
+    init: function (s) {
+      s.minInterval = 0.5 / s.param; s.maxInterval = 1.6 / s.param;
+      s.particles = []; s.flashes = []; s.nextBlast = rand(0.2, 1.0);
+    },
+    step: function (s, dt, now) {
+      if (now >= s.nextBlast) {
+        var center = rand(3, LED_COUNT - 4), count = randInt(14, 24);
+        for (var c = 0; c < count; c++) {
+          var vel = rand(-55, 55);
+          if (Math.abs(vel) < 8) vel = vel >= 0 ? 8 : -8;
+          s.particles.push({ pos: center, vel: vel, heat: 255.0 });
+        }
+        s.flashes.push({ center: center, start: now });
+        s.nextBlast = now + rand(s.minInterval, s.maxInterval);
+      }
+      for (var p = s.particles.length - 1; p >= 0; p--) {
+        var pt = s.particles[p];
+        pt.vel *= (1 - 2.0 * dt);
+        pt.pos += pt.vel * dt;
+        pt.heat -= dt * rand(320, 420);
+        if (pt.heat <= 0 || pt.pos < -2 || pt.pos > LED_COUNT + 1) s.particles.splice(p, 1);
+      }
+      s.flashes = s.flashes.filter(function (f) { return now - f.start < 0.05; });
+      for (var i = 0; i < LED_COUNT; i++) pixels[i] = [0, 0, 0];
+      for (var p2 = 0; p2 < s.particles.length; p2++) {
+        var ptc = s.particles[p2], idx = Math.round(ptc.pos);
+        if (idx >= 0 && idx < LED_COUNT) pixels[idx] = heatColor(ptc.heat);
+      }
+      for (var f = 0; f < s.flashes.length; f++) {
+        var cIdx = Math.round(s.flashes[f].center);
+        for (var off = -1; off <= 1; off++) {
+          var idx2 = cIdx + off;
+          if (idx2 >= 0 && idx2 < LED_COUNT) pixels[idx2] = [255, 255, 255];
+        }
+      }
+    }
+  };
+
+  // ---------- effect: rocket launch ----------
+  var TRAIL_LENGTH = 8, NUM_STARS = Math.max(3, Math.floor(LED_COUNT / 8));
+  var rocket = {
+    name: "Rocket Launch", paramLabel: "Speed", defaultParam: 1,
+    init: function (s) {
+      s.pos = 0; s.speed = 8.0 * s.param; s.acceleration = 14.0 * s.param; s.pauseTimer = 0;
+      s.stars = sample(Array.from({ length: LED_COUNT }, function (_, i) { return i; }), NUM_STARS)
+        .map(function (i) { return { index: i, phase: rand(0, 2 * Math.PI), speed: rand(1.5, 4.0), maxB: rand(0.15, 0.5) }; });
+    },
+    step: function (s, dt, now) {
+      if (s.pauseTimer > 0) { s.pauseTimer -= dt; }
+      else {
+        s.speed += s.acceleration * dt;
+        s.pos += s.speed * dt;
+        if (s.pos >= LED_COUNT + TRAIL_LENGTH) {
+          s.pos = 0; s.speed = 8.0 * s.param; s.pauseTimer = 0.5;
+          s.stars = sample(Array.from({ length: LED_COUNT }, function (_, i) { return i; }), NUM_STARS)
+            .map(function (i) { return { index: i, phase: rand(0, 2 * Math.PI), speed: rand(1.5, 4.0), maxB: rand(0.15, 0.5) }; });
+        }
+      }
+      for (var i = 0; i < LED_COUNT; i++) pixels[i] = [0, 0, 0];
+      for (var st = 0; st < s.stars.length; st++) {
+        var star = s.stars[st];
+        var b = (Math.sin(now * star.speed + star.phase) + 1) / 2;
+        var level = Math.round(star.maxB * b * 255);
+        pixels[star.index] = [level, level, level];
+      }
+      var noseIdx = Math.round(s.pos);
+      if (noseIdx >= 0 && noseIdx < LED_COUNT) pixels[noseIdx] = [255, 255, 255];
+      if (s.pauseTimer <= 0) {
+        for (var step = 1; step <= TRAIL_LENGTH; step++) {
+          var idx = noseIdx - step;
+          if (idx >= 0 && idx < LED_COUNT) pixels[idx] = heatColor(255 * (1 - step / TRAIL_LENGTH));
+        }
+      }
+    }
+  };
+
+  // ---------- effect: water ripples ----------
+  var CALM_COLOR = [0, 40, 90], PEAK_COLOR = [190, 225, 255];
+  function waterColor(intensity) {
+    var t = clamp(intensity, 0, 1);
+    return [
+      Math.round(CALM_COLOR[0] + (PEAK_COLOR[0] - CALM_COLOR[0]) * t),
+      Math.round(CALM_COLOR[1] + (PEAK_COLOR[1] - CALM_COLOR[1]) * t),
+      Math.round(CALM_COLOR[2] + (PEAK_COLOR[2] - CALM_COLOR[2]) * t)
+    ];
+  }
+  var water = {
+    name: "Water Ripples", paramLabel: "Rate", defaultParam: 1,
+    init: function (s) { s.center = (LED_COUNT - 1) / 2; s.ripples = []; s.spawnTimer = 0.1; },
+    step: function (s, dt, now) {
+      s.spawnTimer -= dt;
+      if (s.spawnTimer <= 0) {
+        var big = Math.random() < 0.3;
+        s.ripples.push({
+          origin: s.center, birth: now, amplitude: big ? 1.0 : 0.55,
+          speed: big ? rand(5.0, 7.0) : rand(9.0, 13.0), decay: big ? 0.35 : 0.9,
+          width: big ? rand(2.5, 4.0) : rand(1.0, 2.0)
+        });
+        s.spawnTimer = rand(0.35, 1.1) / s.param;
+      }
+      s.ripples = s.ripples.filter(function (r) {
+        var elapsed = now - r.birth, radius = r.speed * elapsed, fade = Math.exp(-r.decay * elapsed);
+        return !((radius - r.width) > LED_COUNT || fade < 0.03);
+      });
+      for (var i = 0; i < LED_COUNT; i++) {
+        var intensity = 0;
+        for (var r2 = 0; r2 < s.ripples.length; r2++) {
+          var rp = s.ripples[r2], elapsed = now - rp.birth, radius = rp.speed * elapsed;
+          var distance = Math.abs(i - rp.origin);
+          var ring = Math.exp(-((distance - radius) * (distance - radius)) / (2 * rp.width * rp.width));
+          var fade = Math.exp(-rp.decay * elapsed);
+          intensity += rp.amplitude * ring * fade;
+        }
+        pixels[i] = waterColor(intensity);
+      }
+    }
+  };
+
+  // ---------- effect: twinkling stars ----------
+  var COOL_TINT = [150, 190, 255], WARM_TINT = [255, 210, 150], NEUTRAL_TINT = [200, 210, 255], CONSTELLATION_COLOR = [255, 195, 90];
+  function tintColor(tint, brightness) {
+    brightness = clamp(brightness, 0, 1);
+    return [Math.round(tint[0] * brightness), Math.round(tint[1] * brightness), Math.round(tint[2] * brightness)];
+  }
+  var twinkle = {
+    name: "Twinkling Stars", paramLabel: "Shooting-star rate", defaultParam: 1,
+    init: function (s) {
+      var fractions = [0.05, 0.16, 0.30, 0.34, 0.52, 0.71, 0.90];
+      var constSet = {};
+      fractions.forEach(function (f) { constSet[Math.min(LED_COUNT - 1, Math.round(f * (LED_COUNT - 1)))] = true; });
+      s.constellationStars = {};
+      Object.keys(constSet).forEach(function (k) { s.constellationStars[k] = { phase: rand(0, 2 * Math.PI), speed: rand(0.15, 0.3) }; });
+      var available = [];
+      for (var i = 0; i < LED_COUNT; i++) if (!constSet[i]) available.push(i);
+      var bgIndices = sample(available, Math.round(0.45 * available.length));
+      s.backgroundStars = {};
+      bgIndices.forEach(function (i) {
+        s.backgroundStars[i] = { phase: rand(0, 2 * Math.PI), speed: rand(0.5, 2.5), maxB: rand(0.25, 1.0), tint: choice([COOL_TINT, WARM_TINT, NEUTRAL_TINT]) };
+      });
+      s.shootingStar = null;
+      s.shootingTimer = rand(2.0, 6.0) / s.param;
+    },
+    step: function (s, dt, now) {
+      var TRAIL = 5;
+      s.shootingTimer -= dt;
+      if (s.shootingStar) {
+        var pos = s.shootingStar.start + s.shootingStar.direction * s.shootingStar.speed * (now - s.shootingStar.birth);
+        if (pos < -TRAIL - 1 || pos > LED_COUNT + TRAIL) s.shootingStar = null;
+      }
+      if (!s.shootingStar && s.shootingTimer <= 0) {
+        var direction = Math.random() < 0.5 ? 1 : -1;
+        s.shootingStar = { birth: now, direction: direction, start: direction === 1 ? -TRAIL : LED_COUNT - 1 + TRAIL, speed: rand(45.0, 70.0) };
+        s.shootingTimer = rand(6.0, 14.0) / s.param;
+      }
+      for (var i = 0; i < LED_COUNT; i++) {
+        if (s.constellationStars[i]) {
+          var cs = s.constellationStars[i];
+          var b = 0.65 + 0.35 * ((Math.sin(now * cs.speed + cs.phase) + 1) / 2);
+          pixels[i] = tintColor(CONSTELLATION_COLOR, b);
+        } else if (s.backgroundStars[i]) {
+          var bs = s.backgroundStars[i];
+          var bb = (Math.sin(now * bs.speed + bs.phase) + 1) / 2;
+          bb = bb * bb;
+          pixels[i] = tintColor(bs.tint, bb * bs.maxB);
+        } else {
+          pixels[i] = [0, 0, 0];
+        }
+      }
+      if (s.shootingStar) {
+        var head = s.shootingStar.start + s.shootingStar.direction * s.shootingStar.speed * (now - s.shootingStar.birth);
+        for (var off = 0; off <= TRAIL; off++) {
+          var idx = Math.round(head) - off * s.shootingStar.direction;
+          if (idx >= 0 && idx < LED_COUNT) {
+            var level = Math.round(255 * (1 - off / TRAIL));
+            pixels[idx] = [level, level, level];
+          }
+        }
+      }
+    }
+  };
+
+  // ---------- effect: plane flyby ----------
+  var GREEN_NAV = [40, 200, 60], RED_NAV = [200, 30, 30], PLANE_WHITE = [255, 255, 255];
+  var STROBE_PERIOD = 1.4, STROBE_ON_TIME = 0.12, CONTRAIL_LENGTH = 6;
+  function planeBodyColor(offset, now) {
+    if (offset === 0) return PLANE_WHITE;
+    if (offset === 1) return (now % STROBE_PERIOD) < STROBE_ON_TIME ? PLANE_WHITE : GREEN_NAV;
+    if (offset === 2) return RED_NAV;
+    if (offset <= 2 + CONTRAIL_LENGTH) {
+      var t = (offset - 2) / CONTRAIL_LENGTH, level = Math.round(110 * (1 - t));
+      return [level, level, level];
+    }
+    return null;
+  }
+  var plane = {
+    name: "Plane Flyby", paramLabel: "Speed", defaultParam: 1,
+    init: function (s) {
+      s.cruiseSpeed = 14.0 * s.param;
+      s.totalLength = 3 + CONTRAIL_LENGTH;
+      s.direction = 1; s.position = -s.totalLength; s.pauseTimer = 0;
+    },
+    step: function (s, dt, now) {
+      if (s.pauseTimer > 0) { s.pauseTimer -= dt; }
+      else {
+        s.position += s.direction * s.cruiseSpeed * dt;
+        var nose = s.position;
+        if (nose > LED_COUNT - 1 + s.totalLength || nose < -s.totalLength) {
+          s.direction *= -1;
+          s.position = s.direction === 1 ? -s.totalLength : LED_COUNT - 1 + s.totalLength;
+          s.pauseTimer = 1.5;
+        }
+      }
+      for (var i = 0; i < LED_COUNT; i++) pixels[i] = [0, 0, 0];
+      if (s.pauseTimer <= 0) {
+        var noseIdx = Math.round(s.position);
+        for (var offset = 0; offset <= s.totalLength; offset++) {
+          var idx = noseIdx - offset * s.direction;
+          if (idx >= 0 && idx < LED_COUNT) {
+            var color = planeBodyColor(offset, now);
+            if (color) pixels[idx] = color;
+          }
+        }
+      }
+    }
+  };
+
+  var EFFECTS = {
+    "1": rainbow, "2": heartbeat, "3": pacman, "4": fire, "5": pong,
+    "6": fireworks, "7": explosions, "8": rocket, "9": water, "a": twinkle, "b": plane
+  };
+  var ORDER = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b"];
+  var HINTS = {
+    "1": "sliding rainbow", "2": "traveling pulse from center", "3": "eats pellets, dodges ghosts",
+    "4": "Fire2012 flame simulation", "5": "self-playing rally", "6": "launch + burst from pixel 0",
+    "7": "random blasts anywhere on the strip", "8": "climbs against a twinkling starfield",
+    "9": "ripples expand out from center", "a": "\"The Wayfarer\" + shooting stars", "b": "nav lights, strobe, fading contrail"
+  };
+
+  // ---------- DOM wiring ----------
+  var stripEl = document.getElementById("strip");
+  var bulbEls = [];
+  for (var b = 0; b < LED_COUNT; b++) {
+    var el = document.createElement("div");
+    el.className = "bulb";
+    stripEl.appendChild(el);
+    bulbEls.push(el);
+  }
+
+  var effectSelect = document.getElementById("effect");
+  ORDER.forEach(function (key) {
+    var opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = key.toUpperCase() + " — " + EFFECTS[key].name;
+    effectSelect.appendChild(opt);
+  });
+
+  var legendBody = document.getElementById("legendBody");
+  var legendRows = {};
+  ORDER.forEach(function (key) {
+    var tr = document.createElement("tr");
+    tr.innerHTML = '<td class="key">' + key + '</td><td class="name">' + EFFECTS[key].name + '</td><td class="hint">' + HINTS[key] + '</td>';
+    legendBody.appendChild(tr);
+    legendRows[key] = tr;
+  });
+
+  var paramField = document.getElementById("paramField");
+  var paramLabel = document.getElementById("paramLabel");
+  var paramInput = document.getElementById("param");
+  var playPauseBtn = document.getElementById("playPause");
+  var restartBtn = document.getElementById("restart");
+  var powerDot = document.getElementById("powerDot");
+  var powerLabel = document.getElementById("powerLabel");
+  var effectReadout = document.getElementById("effectReadout");
+
+  var currentKey = "1", currentParam = 1, running = true, state = {}, simTime = 0, lastT = null;
+
+  function setLegendHighlight(key) {
+    ORDER.forEach(function (k) { legendRows[k].className = k === key ? "current" : ""; });
+  }
+
+  function resetEffect(key, param) {
+    currentKey = key;
+    currentParam = param;
+    simTime = 0;
+    state = { param: param };
+    EFFECTS[key].init(state);
+    effectReadout.textContent = EFFECTS[key].name;
+    setLegendHighlight(key);
+  }
+
+  effectSelect.addEventListener("change", function () {
+    var key = effectSelect.value, def = EFFECTS[key];
+    if (def.paramLabel) {
+      paramField.style.visibility = "visible";
+      paramLabel.textContent = def.paramLabel;
+      paramInput.value = def.defaultParam;
+      resetEffect(key, def.defaultParam);
+    } else {
+      paramField.style.visibility = "hidden";
+      resetEffect(key, null);
+    }
+  });
+
+  paramInput.addEventListener("change", function () {
+    var v = parseFloat(paramInput.value);
+    if (!isNaN(v) && v > 0) resetEffect(currentKey, v);
+  });
+
+  playPauseBtn.addEventListener("click", function () {
+    running = !running;
+    lastT = null;
+    playPauseBtn.textContent = running ? "Pause" : "Play";
+    playPauseBtn.classList.toggle("active", running);
+    powerDot.classList.toggle("paused", !running);
+    powerLabel.textContent = running ? "Live" : "Paused";
+  });
+
+  restartBtn.addEventListener("click", function () {
+    resetEffect(currentKey, EFFECTS[currentKey].paramLabel ? currentParam : null);
+  });
+
+  var OFF_LENS = "#171b1d";
+  function renderPixels() {
+    for (var i = 0; i < LED_COUNT; i++) {
+      var c = pixels[i], r = c[0], g = c[1], bch = c[2];
+      var bulb = bulbEls[i];
+      if (r + g + bch < 6) {
+        bulb.style.background = OFF_LENS;
+        bulb.style.boxShadow = "inset 0 0 2px rgba(0,0,0,0.6)";
+      } else {
+        var alpha = Math.min(1, Math.max(r, g, bch) / 255);
+        bulb.style.background = "rgb(" + r + "," + g + "," + bch + ")";
+        bulb.style.boxShadow = "0 0 " + (5 + alpha * 14) + "px " + (2 + alpha * 5) + "px rgba(" + r + "," + g + "," + bch + "," + (0.5 * alpha + 0.15) + "), inset 0 0 2px rgba(255,255,255,0.35)";
+      }
+    }
+  }
+
+  function loop(ts) {
+    requestAnimationFrame(loop);
+    if (!running) return;
+    if (lastT === null) lastT = ts;
+    var dt = (ts - lastT) / 1000;
+    lastT = ts;
+    dt = Math.min(dt, 0.05);
+    simTime += dt;
+    EFFECTS[currentKey].step(state, dt, simTime);
+    renderPixels();
+  }
+
+  resetEffect("1", 1);
+  requestAnimationFrame(loop);
+})();
+</script>
