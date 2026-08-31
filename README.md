@@ -42,6 +42,12 @@ ledstrip
 
 from anywhere. At the menu, typing a key runs that effect; typing a key followed by a number (e.g. `4 2`) passes that number through as the effect's optional speed/rate/intensity multiplier (default `1`).
 
+## Preview effects in your browser
+
+`simulator.html` reimplements every effect below in JavaScript and runs it on a virtual 60-pixel strip — no Pi, no wiring, no venv. Clone the repo and open `simulator.html` directly (double-click it, or drag it into a browser tab); it's a single self-contained file with no server or build step required.
+
+Pick an effect from the dropdown and it starts animating immediately; changing the number field (speed/rate/BPM/intensity, matching that effect's optional argument above) restarts it with the new value, the same way picking a key with a number does on the real menu. It's a close port of each effect's actual logic, not just a lookalike — useful for previewing a pattern, or for testing a new one, without needing the hardware in front of you.
+
 ## Effects
 
 | Key | Effect | Notes |
@@ -73,6 +79,8 @@ from anywhere. At the menu, typing a key runs that effect; typing a key followed
 2. Add one `(key, name, filename, hint)` tuple to `PROGRAMS` in `led.py`, using the next unused key in sequence (`1`–`9`, then `a`, `b`, `c`, … — never `o` or `q`, which are reserved).
 
 Nothing else needs to change — `led.py`'s subprocess handling, key dispatch, and stop-before-switch logic are all generic.
+
+To add it to `simulator.html` too, port the effect's `init`/`step` logic into JS (each effect there is an object with `init(state)` and `step(state, dt, now)` writing into a shared `pixels` array), then register it in that file's `EFFECTS`, `ORDER`, and `HINTS`.
 
 ## License
 
