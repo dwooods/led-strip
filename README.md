@@ -57,7 +57,6 @@ from anywhere. At the menu, typing a key runs that effect; typing a key followed
 | 9 | Water Ripples | Ripples originate from the middle of the strip and expand symmetrically outward over a calm dark-blue base; optional rate multiplier |
 | a | Twinkling Stars | A fixed invented constellation ("The Wayfarer") stays lit while background stars twinkle and occasional shooting stars streak past; optional shooting-star-rate multiplier |
 | b | Plane Flyby | A single plane cruises end-to-end with nav lights, an anti-collision strobe, and a fading contrail, alternating direction each pass; optional speed multiplier |
-| c | Plane Dogfight | A hero and enemy plane close in from opposite ends; the hero fires and the enemy goes down in a fireball before both reset; optional speed multiplier |
 | o | Turn off | Clears the strip and exits (not a looping effect — runs once, blocking) |
 | q | Quit | Stops whatever's running and exits the menu |
 
