@@ -4,6 +4,8 @@ A menu-driven controller for an addressable SK6812/WS2812B-compatible LED strip 
 
 **New here?** Read [JOURNEY.md](JOURNEY.md) for the full story of how this project got built — the Pi 5 GPIO gotcha, hardware wiring decisions, and what building all eleven effects taught along the way.
 
+**New here?** Read [JOURNEY.md](JOURNEY.md) for the full story of how this project got built — the Pi 5 GPIO gotcha, hardware wiring decisions, and what building all eleven effects taught along the way.
+
 ## Hardware
 
 - Raspberry Pi 5
