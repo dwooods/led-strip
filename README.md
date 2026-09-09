@@ -2,6 +2,8 @@
 
 A menu-driven controller for an addressable SK6812/WS2812B-compatible LED strip on a **Raspberry Pi 5**, driven over hardware SPI. Pick an animated effect from a terminal menu; it runs in the background until you swap to another one, turn the strip off, or quit.
 
+**New here?** Read [JOURNEY.md](JOURNEY.md) for the full story of how this project got built — the Pi 5 GPIO gotcha, hardware wiring decisions, and what building all eleven effects taught along the way.
+
 ## Hardware
 
 - Raspberry Pi 5
